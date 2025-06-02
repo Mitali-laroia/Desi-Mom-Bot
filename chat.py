@@ -176,26 +176,26 @@ print("Mom: Hain beta, bol... Python ka kya sawaal hai aaj?\n")
 
 while True:
     query = input("You: ")
-    if query.lower() in ["exit", "quit", "bye"]:
-        print("Mom: Achha beta, ab jaake kuch kaam kiya kar, mobile par mat laga rhio. Dekh Sharma ji ka beta toh abhi Flask bana raha hai.\n")
+    messages.append({ "role": "user", "content": query })
+
+    while True:
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            response_format={"type": "json_object"},
+            messages=messages
+        )
+
+        messages.append({ "role": "assistant", "content": response.choices[0].message.content })
+        parsed_response = json.loads(response.choices[0].message.content)
+
+        if parsed_response.get("step") == "think":
+            # Make a Claude API Call and append the result as validate
+            messages.append({ "role": "assistant", "content": "<>" })
+            continue
+
+        if parsed_response.get("step") != "result":
+            print("🧠:", parsed_response.get("content"))
+            continue
+
+        print("🤖:", parsed_response.get("content"))
         break
-
-    messages.append({"role": "user", "content": query})
-
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        response_format={"type": "json_object"},
-        messages=messages
-    )
-    messages.append({ "role": "assistant", "content": response.choices[0].message.content })
-    parsed_response = json.loads(response.choices[0].message.content)
-
-    if parsed_response.get("step") == "think":
-        messages.append({ "role": "assistant", "content": "<>" })
-        continue
-
-    if parsed_response.get("step") != "result":
-        print("🧠:", parsed_response.get("content"))
-        continue
-
-    print("🤖:", parsed_response.get("content"))
