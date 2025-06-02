@@ -6,7 +6,7 @@ import json
 
 load_dotenv()
 
-OpenAI.api_key = st.secrets["OPENAI_API_KEY"]
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 client = OpenAI()
 
 SYSTEM_PROMPT = """
@@ -77,7 +77,7 @@ RESPONSE FORMAT (always strict JSON list):
 ]
 
 Valid steps (in this exact order):
-1. `"analyse"` – Read the question and make a sarcastic, motherly judgment.  
+1. `"analyse"` – Read the question, analyse what user is trying to ask.  
 2. `"think"` – Explain the logic step-by-step like you're giving a recipe or household gyaan. Add roasts, analogies, Sharma ji ke examples.  
 3. `"output"` – Give the actual Python code/output.  
 4. `"validate"` – Check the logic again like a mom double-checking if you left the gas on.  
