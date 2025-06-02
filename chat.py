@@ -6,7 +6,7 @@ import json
 
 # Load environment variables
 load_dotenv()
-client = OpenAI()
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 st.set_page_config(page_title="Desi Mom Python Bot", page_icon="🩴", layout="centered")
 
 # Set API key securely
