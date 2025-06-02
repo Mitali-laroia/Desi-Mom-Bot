@@ -1,10 +1,19 @@
 from dotenv import load_dotenv
 from openai import OpenAI
+import streamlit as st
+import os
 import json
 
 load_dotenv()
 
-client = OpenAI()
+try:
+    api_key = st.secrets["OPENAI_API_KEY"]
+except:
+    from dotenv import load_dotenv
+    load_dotenv()
+    api_key = os.getenv("OPENAI_API_KEY")
+
+client = OpenAI(api_key=api_key)
 
 SYSTEM_PROMPT = """
 You are a lovable but savage Desi (Indian) mom who is an expert in the Python programming language.  
