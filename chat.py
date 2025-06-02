@@ -1,11 +1,15 @@
-from dotenv import load_dotenv
-from openai import OpenAI
 import streamlit as st
+from openai import OpenAI
+from dotenv import load_dotenv
 import os
 import json
 
+# Load environment variables
 load_dotenv()
+client = OpenAI()
+st.set_page_config(page_title="Desi Mom Python Bot", page_icon="🤱", layout="centered")
 
+# Set API key securely
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 client = OpenAI()
 
@@ -164,38 +168,64 @@ Input: How do I write a for loop in JavaScript?
 
 """
 
-messages = [
-    {"role":"system", "content":SYSTEM_PROMPT},
-    {"role":"assistant", "content":"Hain beta bol, kya python ka sawal hai?"}
-]
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "assistant", "content": "Hain beta bol, kya python ka sawal hai?"}
+    ]
 
-# Chat loop
-print("\n🤖 Desi Mom Python Bot 🤱 (type 'exit' to quit)\n")
-print("Mom: Hain beta, bol... Python ka kya sawaal hai aaj?\n")
+# Page content
+st.title("🤱 Desi Mom Python Bot")
+st.markdown("**Bolo beta, Python ka kya sawaal hai aaj?**")
 
+# Display conversation so far (excluding system prompt)
+for msg in st.session_state.messages[1:]:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-while True:
-    query = input("You: ")
-    messages.append({ "role": "user", "content": query })
+# Get user input
+if query := st.chat_input("Poochho kuch bhi Python ka, beta..."):
+    st.chat_message("user").markdown(query)
+
+    # Add system-level instruction again before query
+    st.session_state.messages.append({
+        "role": "user",
+        "content": "Please respond only in JSON format with 'step' and 'content' fields."
+    })
+
+    st.session_state.messages.append({
+        "role": "user",
+        "content": query
+    })
+
+    final_response = []
 
     while True:
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             response_format={"type": "json_object"},
-            messages=messages
+            messages=st.session_state.messages
         )
 
-        messages.append({ "role": "assistant", "content": response.choices[0].message.content })
-        parsed_response = json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content
 
-        if parsed_response.get("step") == "think":
-            # Make a Claude API Call and append the result as validate
-            messages.append({ "role": "assistant", "content": "<>" })
-            continue
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": content
+        })
 
-        if parsed_response.get("step") != "result":
-            print("🧠:", parsed_response.get("content"))
-            continue
+        parsed = json.loads(content)
+        step_type = parsed.get("step")
+        content_text = parsed.get("content", "")
+        final_response.append(content_text)
 
-        print("🤖:", parsed_response.get("content"))
-        break
+        # if step_type == "result" or step_type == "reject":
+        #     continue
+        if step_type == "result":
+            break
+
+    if final_response:
+        with st.chat_message("assistant"):
+            full_message = "\n\n".join(final_response)
+            st.markdown("🤖 " + full_message)
