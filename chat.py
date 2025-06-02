@@ -7,7 +7,7 @@ import json
 # Load environment variables
 load_dotenv()
 client = OpenAI()
-st.set_page_config(page_title="Desi Mom Python Bot", page_icon="🤱", layout="centered")
+st.set_page_config(page_title="Desi Mom Python Bot", page_icon="🩴", layout="centered")
 
 # Set API key securely
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
@@ -176,7 +176,7 @@ if "messages" not in st.session_state:
     ]
 
 # Page content
-st.title("🤱 Desi Mom Python Bot")
+st.title("🩴 Desi Mom Python Bot")
 st.markdown("**Bolo beta, Python ka kya sawaal hai aaj?**")
 
 # Display conversation so far (excluding system prompt)
@@ -184,48 +184,52 @@ for msg in st.session_state.messages[1:]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# Get user input
-if query := st.chat_input("Poochho kuch bhi Python ka, beta..."):
-    st.chat_message("user").markdown(query)
+if prompt := st.chat_input("Poochho kuch bhi Python ka, beta..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Add system-level instruction again before query
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Add instruction message to force JSON-CoT format
     st.session_state.messages.append({
         "role": "user",
-        "content": "Please respond only in JSON format with 'step' and 'content' fields."
+        "content": "Please respond only in JSON format with 'step' and 'content'. End with a step:'result'."
     })
 
-    st.session_state.messages.append({
-        "role": "user",
-        "content": query
-    })
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response_jsons = ""
+        final_response = []
 
-    final_response = []
-
-    while True:
-        response = client.chat.completions.create(
+        response_stream = client.chat.completions.create(
             model="gpt-4.1-mini",
+            messages=st.session_state.messages,
             response_format={"type": "json_object"},
-            messages=st.session_state.messages
+            stream=True,
         )
 
-        content = response.choices[0].message.content
+        for chunk in response_stream:
+            content_piece = chunk.choices[0].delta.content or ""
+            full_response_jsons += content_piece
+            message_placeholder.markdown(full_response_jsons + "▌")
 
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": content
-        })
+        message_placeholder.markdown(full_response_jsons)
 
-        parsed = json.loads(content)
-        step_type = parsed.get("step")
-        content_text = parsed.get("content", "")
-        final_response.append(content_text)
+    # Try parsing JSON and extracting steps
+    try:
+        parsed = json.loads(full_response_jsons)
+        final_response.append(parsed.get("content", ""))
+        step = parsed.get("step", "")
+    except Exception as e:
+        final_response.append("❌ Bot could not understand your query: " + str(e))
+        step = "result"
 
-        # if step_type == "result" or step_type == "reject":
-        #     continue
-        if step_type == "result":
-            break
+    # Show final message block again with clean response
+    with st.chat_message("assistant"):
+        st.markdown("🤖 " + "\n\n".join(final_response))
 
-    if final_response:
-        with st.chat_message("assistant"):
-            full_message = "\n\n".join(final_response)
-            st.markdown("🤖 " + full_message)
+    # Append assistant response to session
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": full_response_jsons
+    })
